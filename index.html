@@ -1,0 +1,481 @@
+<title>Reto Intrafer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&display=swap');
+
+  :root{
+    --bg:#FCEFC7;
+    --bg-2:#F8DE93;
+    --surface:#FFFFFF;
+    --ink:#3A2504;
+    --muted:#8A6A2E;
+    --line:#F0D28C;
+    --teal:#12967B;
+    --teal-dark:#0B6E58;
+    --teal-ink:#eafff9;
+    --maroon:#C21F3A;
+    --gold:#F2A900;
+    --gold-ink:#3A2504;
+    --ok:#1E9E5A;
+    --shadow: 0 8px 20px -12px rgba(58,37,4,.32);
+  }
+  /* Fondo dorado inspirado en el robot mascota de Intrafer (amarillo/rojo/metal) */
+
+  *{box-sizing:border-box;}
+  body{
+    background:
+      radial-gradient(720px 460px at 8% -8%, color-mix(in srgb, var(--maroon) 14%, transparent), transparent 60%),
+      radial-gradient(640px 420px at 108% 6%, color-mix(in srgb, #6b7280 16%, transparent), transparent 55%),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+    color:var(--ink);
+    font-family:'Nunito Sans', system-ui, -apple-system, sans-serif;
+    padding-inline:14px;
+    padding-block:16px;
+    min-height:100%;
+  }
+  h1,.display{ font-family:'Baloo 2', system-ui, sans-serif; }
+
+  .wrap{ max-width:420px; margin:0 auto; }
+
+  .brand-top{ display:flex; justify-content:center; margin-bottom:14px; }
+  .brand-top img{ height:56px; width:auto; display:block; }
+
+  .brand-bottom{
+    display:flex; justify-content:center; align-items:center; margin-top:16px;
+    padding-top:16px; border-top:1px solid var(--line);
+  }
+  .brand-bottom img{ height:38px; width:auto; display:block; }
+
+  .top{ text-align:center; margin-bottom:12px; }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:6px;
+    font-weight:800; font-size:.66rem; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--teal-dark); background:color-mix(in srgb, var(--teal) 16%, var(--surface));
+    padding:4px 11px; border-radius:999px; margin-bottom:8px;
+  }
+  h1{ font-size:1.28rem; font-weight:800; margin:0 0 4px; line-height:1.14; }
+  h1 span{ color:var(--maroon); }
+  .sub{ color:var(--muted); font-size:.82rem; margin:0; }
+
+  .stats{
+    display:flex; gap:8px; justify-content:center; margin:12px 0;
+  }
+  .chip{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:6px 14px; box-shadow:var(--shadow); text-align:center; min-width:98px;
+  }
+  .chip .label{ font-size:.58rem; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); display:block; }
+  .chip .value{ font-family:'Baloo 2',sans-serif; font-size:1.12rem; font-weight:700; font-variant-numeric:tabular-nums; line-height:1.2; }
+  .chip.timer .value{ color:var(--maroon); }
+  .chip.best .value{ color:var(--teal-dark); }
+
+  .controls{ display:flex; gap:8px; justify-content:center; margin-bottom:12px; }
+  button{ font-family:inherit; cursor:pointer; border:none; }
+  .btn{
+    display:inline-flex; align-items:center; gap:6px;
+    font-weight:800; font-size:.78rem; padding:8px 14px; border-radius:10px;
+    transition:transform .12s ease, filter .12s ease; box-shadow:var(--shadow);
+  }
+  .btn:active{ transform:translateY(1px) scale(.98); }
+  .btn-primary{ background:var(--maroon); color:#fff; }
+  .btn-peek{ background:var(--gold); color:var(--gold-ink); touch-action:none; user-select:none; }
+
+  .board-card{
+    background:var(--surface); border:1px solid var(--line); border-radius:16px;
+    padding:8px; box-shadow:var(--shadow);
+  }
+  .board{
+    position:relative; width:100%; aspect-ratio:1/1;
+    display:grid; border-radius:10px; overflow:hidden;
+    background:var(--bg-2);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .slot{
+    position:relative; border:1px solid color-mix(in srgb, var(--line) 70%, transparent);
+    overflow:hidden;
+  }
+
+  .peek-layer{
+    position:absolute; inset:0; background-image:url('puzzle.jpg');
+    background-size:cover; background-position:center;
+    opacity:0; pointer-events:none; transition:opacity .15s ease; z-index:5;
+  }
+  .peek-layer.show{ opacity:.92; }
+
+  .piece{
+    position:absolute; inset:0; background-size:400% 400%;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.14);
+    touch-action:none; cursor:grab; will-change:transform;
+  }
+  .piece.locked{ cursor:default; box-shadow: inset 0 0 0 2px var(--ok); filter:saturate(1.05); }
+  .piece.dragging-source{ opacity:.18; cursor:grabbing; }
+  .piece.ghost{ cursor:grabbing; z-index:999; box-shadow:0 14px 28px -6px rgba(0,0,0,.5); border-radius:6px; transform:scale(1.04); }
+  .piece.wrong{ animation: shake .3s ease; }
+  @keyframes shake{ 20%{transform:translateX(-5px) rotate(-2deg);} 60%{transform:translateX(5px) rotate(2deg);} 100%{transform:translateX(0) rotate(0);} }
+  @media (prefers-reduced-motion: reduce){ .piece.wrong{ animation:none; } }
+  .slot.over{ outline:2px solid var(--teal); outline-offset:-2px; z-index:6; }
+
+  .hint{ font-size:.76rem; color:var(--muted); margin-top:10px; text-align:center; line-height:1.5; }
+  .hint b{ color:var(--ink); }
+  .progress-row{ display:flex; align-items:center; gap:8px; margin-top:10px; }
+  .progress-track{ flex:1; height:6px; border-radius:999px; background:var(--bg-2); overflow:hidden; }
+  .progress-fill{ height:100%; background:var(--teal); width:0%; transition:width .2s ease; border-radius:999px; }
+  .progress-num{ font-size:.72rem; font-weight:800; color:var(--muted); font-variant-numeric:tabular-nums; }
+
+  .overlay{
+    position:fixed; inset:0; background:color-mix(in srgb, var(--ink) 55%, transparent);
+    display:flex; align-items:center; justify-content:center; padding:18px;
+    z-index:200; opacity:0; pointer-events:none; transition:opacity .25s ease;
+  }
+  .overlay.show{ opacity:1; pointer-events:auto; }
+  .win-card{
+    background:var(--surface); border-radius:20px; max-width:440px; width:100%;
+    padding:18px; box-shadow:0 30px 60px -20px rgba(0,0,0,.5);
+    max-height:92vh; overflow-y:auto; transform:translateY(14px) scale(.97); transition:transform .25s ease;
+  }
+  .overlay.show .win-card{ transform:translateY(0) scale(1); }
+  .win-head{ text-align:center; margin-bottom:12px; }
+  .win-head .medal{ font-family:'Baloo 2',sans-serif; font-size:.68rem; font-weight:800; letter-spacing:.09em; text-transform:uppercase; color:var(--teal-dark); }
+  .win-head h2{ margin:6px 0 2px; font-size:1.32rem; font-family:'Baloo 2',sans-serif; }
+  .win-time{ font-family:'Baloo 2',sans-serif; color:var(--maroon); font-size:1.9rem; font-weight:700; font-variant-numeric:tabular-nums; }
+  .win-card img{ width:100%; border-radius:12px; display:block; margin:12px 0; box-shadow:var(--shadow); }
+  .win-actions{ display:flex; gap:10px; justify-content:center; }
+
+  canvas#confetti{ position:fixed; inset:0; z-index:210; pointer-events:none; }
+</style>
+
+<div class="wrap">
+  <div class="brand-top">
+    <img src="unipharm-logo.png" alt="Unipharm" />
+  </div>
+
+  <div class="top">
+    <span class="eyebrow">● Reto Intrafer TF-500</span>
+    <h1>Ordena las piezas <span>antes de tiempo</span></h1>
+    <p class="sub">Arrastra una pieza sobre otra para intercambiarlas.</p>
+  </div>
+
+  <div class="stats">
+    <div class="chip timer"><span class="label">Tiempo</span><span class="value" id="timerVal">00:00.0</span></div>
+    <div class="chip best"><span class="label">Mejor</span><span class="value" id="bestVal">—</span></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="resetBtn">↻ Mezclar de nuevo</button>
+    <button class="btn btn-peek" id="peekBtn">👁 Pista</button>
+  </div>
+
+  <div class="board-card">
+    <div class="board" id="board" style="grid-template-columns:repeat(4,1fr); grid-template-rows:repeat(4,1fr);">
+      <div class="peek-layer" id="peekLayer"></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <span class="progress-num"><span id="placedNum">0</span>/16</span>
+    </div>
+  </div>
+
+  <p class="hint">Mantén presionado <b>Pista</b> para ver la imagen completa como referencia.</p>
+
+  <div class="brand-bottom">
+    <img src="intrafer-logo.png" alt="Intrafer - Hierro aminoquelado + ácido fólico" />
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="win-card">
+    <div class="win-head">
+      <div class="medal">🏆 Rompecabezas completado</div>
+      <h2>¡Excelente!</h2>
+      <div class="win-time" id="finalTime">00:00.0</div>
+    </div>
+    <img src="info.jpg" alt="Información del producto Intrafer TF-500" />
+    <div class="win-actions">
+      <button class="btn btn-primary" id="playAgainBtn">Jugar de nuevo</button>
+    </div>
+  </div>
+</div>
+<canvas id="confetti" hidden></canvas>
+
+<script>
+(function(){
+  "use strict";
+  var N = 4;
+  var TOTAL = N*N;
+  var board = document.getElementById('board');
+  var timerVal = document.getElementById('timerVal');
+  var bestVal = document.getElementById('bestVal');
+  var overlay = document.getElementById('overlay');
+  var finalTime = document.getElementById('finalTime');
+  var peekLayer = document.getElementById('peekLayer');
+  var peekBtn = document.getElementById('peekBtn');
+  var progressFill = document.getElementById('progressFill');
+  var placedNum = document.getElementById('placedNum');
+
+  var slots = [];       // slot DOM elements, index = slot index
+  var placed = 0;
+  var startTime = null;
+  var rafId = null;
+  var finished = false;
+
+  function fmt(ms){
+    var totalTenths = Math.floor(ms/100);
+    var tenths = totalTenths % 10;
+    var totalSec = Math.floor(totalTenths/10);
+    var s = totalSec % 60;
+    var m = Math.floor(totalSec/60);
+    return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0') + '.' + tenths;
+  }
+  function tick(){
+    if(startTime==null) return;
+    timerVal.textContent = fmt(performance.now() - startTime);
+    rafId = requestAnimationFrame(tick);
+  }
+  function startTimer(){
+    if(startTime!=null || finished) return;
+    startTime = performance.now();
+    rafId = requestAnimationFrame(tick);
+  }
+  function stopTimer(){
+    if(rafId) cancelAnimationFrame(rafId);
+    return startTime!=null ? performance.now()-startTime : 0;
+  }
+  function loadBest(){
+    try{
+      var v = localStorage.getItem('intrafer_puzzle_best');
+      if(v) bestVal.textContent = fmt(parseFloat(v));
+    }catch(e){}
+  }
+  function saveBest(ms){
+    try{
+      var cur = localStorage.getItem('intrafer_puzzle_best');
+      if(!cur || parseFloat(cur) > ms){
+        localStorage.setItem('intrafer_puzzle_best', String(ms));
+        bestVal.textContent = fmt(ms);
+      }
+    }catch(e){}
+  }
+  function bgPosFor(row,col){
+    return (col/(N-1))*100 + '% ' + (row/(N-1))*100 + '%';
+  }
+  // Detecta la casilla bajo el dedo/cursor por posición, no por "qué elemento hay debajo"
+  // (elementFromPoint falla en varios navegadores móviles cuando la pieza arrastrada
+  // sigue exactamente al dedo, porque queda encima del punto que se está consultando).
+  function slotIndexAtPoint(clientX, clientY){
+    var rect = board.getBoundingClientRect();
+    if(clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) return -1;
+    var col = Math.floor((clientX - rect.left) / rect.width * N);
+    var row = Math.floor((clientY - rect.top) / rect.height * N);
+    col = Math.max(0, Math.min(N-1, col));
+    row = Math.max(0, Math.min(N-1, row));
+    return row*N + col;
+  }
+  function shuffle(arr){
+    for(var i=arr.length-1;i>0;i--){
+      var j = Math.floor(Math.random()*(i+1));
+      var t=arr[i]; arr[i]=arr[j]; arr[j]=t;
+    }
+    return arr;
+  }
+  function updateProgress(){
+    progressFill.style.width = (placed/TOTAL*100)+'%';
+    placedNum.textContent = placed;
+  }
+
+  function build(){
+    board.innerHTML = '';
+    board.appendChild(peekLayer);
+    slots = [];
+    placed = 0;
+    finished = false;
+    startTime = null;
+    if(rafId) cancelAnimationFrame(rafId);
+    timerVal.textContent = '00:00.0';
+    updateProgress();
+    overlay.classList.remove('show');
+
+    var order = [];
+    for(var i=0;i<TOTAL;i++) order.push(i);
+    shuffle(order);
+    // avoid an already-solved arrangement
+    var solvedCount = order.filter(function(v,i){return v===i;}).length;
+    if(solvedCount === TOTAL) { var a=order[0]; order[0]=order[1]; order[1]=a; }
+
+    for(var s=0; s<TOTAL; s++){
+      var slot = document.createElement('div');
+      slot.className = 'slot';
+      slot.dataset.index = s;
+      board.appendChild(slot);
+      slots.push(slot);
+
+      var pieceIndex = order[s];
+      var row = Math.floor(pieceIndex/N), col = pieceIndex%N;
+      var piece = document.createElement('div');
+      piece.className = 'piece';
+      piece.dataset.correct = pieceIndex;
+      piece.style.backgroundImage = "url('puzzle.jpg')";
+      piece.style.backgroundPosition = bgPosFor(row,col);
+      slot.appendChild(piece);
+      attachDrag(piece);
+      refreshLock(piece, slot);
+    }
+  }
+
+  function refreshLock(piece, slot){
+    var correct = parseInt(piece.dataset.correct,10) === parseInt(slot.dataset.index,10);
+    if(correct && !piece.classList.contains('locked')){
+      piece.classList.add('locked');
+      placed++;
+      updateProgress();
+    } else if(!correct && piece.classList.contains('locked')){
+      piece.classList.remove('locked');
+    }
+    return correct;
+  }
+
+  function attachDrag(piece){
+    piece.addEventListener('pointerdown', function(ev){
+      if(piece.classList.contains('locked') || finished) return;
+      ev.preventDefault();
+      startTimer();
+
+      var originSlot = piece.parentElement;
+      var rect = piece.getBoundingClientRect();
+      var size = rect.width;
+      var offsetX = ev.clientX - rect.left;
+      var offsetY = ev.clientY - rect.top;
+
+      // La pieza real NUNCA se mueve de lugar mientras se arrastra (evita perder
+      // la captura del puntero en Safari/iPadOS al reparentarla). En su lugar,
+      // se muestra una copia visual (ghost) que sigue al dedo/cursor.
+      var ghost = piece.cloneNode(true);
+      ghost.classList.remove('locked');
+      ghost.classList.add('ghost');
+      ghost.style.position='fixed';
+      ghost.style.inset='auto';
+      ghost.style.left=(ev.clientX-offsetX)+'px';
+      ghost.style.top=(ev.clientY-offsetY)+'px';
+      ghost.style.width=size+'px';
+      ghost.style.height=size+'px';
+      ghost.style.pointerEvents='none';
+      document.body.appendChild(ghost);
+
+      piece.classList.add('dragging-source');
+      try{ piece.setPointerCapture(ev.pointerId); }catch(err){}
+
+      function move(e){
+        ghost.style.left=(e.clientX-offsetX)+'px';
+        ghost.style.top=(e.clientY-offsetY)+'px';
+        var idx = slotIndexAtPoint(e.clientX, e.clientY);
+        slots.forEach(function(sl){ sl.classList.remove('over'); });
+        if(idx>=0) slots[idx].classList.add('over');
+      }
+      function end(e){
+        try{ piece.releasePointerCapture(ev.pointerId); }catch(err){}
+        piece.removeEventListener('pointermove', move);
+        piece.removeEventListener('pointerup', end);
+        piece.removeEventListener('pointercancel', end);
+        piece.classList.remove('dragging-source');
+        slots.forEach(function(sl){ sl.classList.remove('over'); });
+        if(ghost.parentNode) ghost.parentNode.removeChild(ghost);
+
+        var idx = slotIndexAtPoint(e.clientX, e.clientY);
+        var targetSlot = idx>=0 ? slots[idx] : null;
+
+        if(targetSlot && targetSlot !== originSlot){
+          var otherPiece = targetSlot.querySelector('.piece');
+          if(otherPiece && otherPiece.classList.contains('locked')){
+            piece.classList.add('wrong');
+            setTimeout(function(){ piece.classList.remove('wrong'); }, 300);
+          } else {
+            if(otherPiece) originSlot.appendChild(otherPiece);
+            targetSlot.appendChild(piece);
+            if(otherPiece) refreshLock(otherPiece, originSlot);
+            refreshLock(piece, targetSlot);
+            checkWin();
+          }
+        }
+      }
+      piece.addEventListener('pointermove', move);
+      piece.addEventListener('pointerup', end);
+      piece.addEventListener('pointercancel', end);
+    });
+  }
+
+  function checkWin(){
+    if(placed<TOTAL) return;
+    finished = true;
+    var elapsed = stopTimer();
+    timerVal.textContent = fmt(elapsed);
+    finalTime.textContent = fmt(elapsed);
+    saveBest(elapsed);
+    setTimeout(function(){
+      overlay.classList.add('show');
+      burstConfetti();
+    }, 300);
+  }
+
+  function peekOn(){ peekLayer.classList.add('show'); }
+  function peekOff(){ peekLayer.classList.remove('show'); }
+  peekBtn.addEventListener('pointerdown', function(e){ e.preventDefault(); peekOn(); });
+  ['pointerup','pointerleave','pointercancel'].forEach(function(evt){
+    peekBtn.addEventListener(evt, peekOff);
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', build);
+  document.getElementById('playAgainBtn').addEventListener('click', function(){
+    overlay.classList.remove('show');
+    build();
+  });
+
+  var canvas = document.getElementById('confetti');
+  var ctx = canvas.getContext('2d');
+  var confettiParticles = [];
+  var confettiRAF = null;
+  var confettiColors = ['#C21F3A','#12967B','#F2A900','#FBF5E9'];
+  function resizeCanvas(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+  function burstConfetti(){
+    if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    resizeCanvas();
+    canvas.hidden = false;
+    confettiParticles = [];
+    for(var i=0;i<130;i++){
+      confettiParticles.push({
+        x: Math.random()*canvas.width,
+        y: -20 - Math.random()*canvas.height*0.4,
+        vx: (Math.random()-0.5)*3,
+        vy: 2+Math.random()*3.5,
+        size: 5+Math.random()*6,
+        color: confettiColors[Math.floor(Math.random()*confettiColors.length)],
+        rot: Math.random()*Math.PI,
+        vr: (Math.random()-0.5)*0.3
+      });
+    }
+    var start = performance.now();
+    function step(now){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      var alive=false;
+      confettiParticles.forEach(function(p){
+        p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr;
+        if(p.y < canvas.height+20) alive=true;
+        ctx.save();
+        ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+        ctx.fillStyle=p.color;
+        ctx.fillRect(-p.size/2,-p.size/4,p.size,p.size/2);
+        ctx.restore();
+      });
+      if(alive && now-start < 4200){
+        confettiRAF = requestAnimationFrame(step);
+      } else {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        canvas.hidden = true;
+      }
+    }
+    if(confettiRAF) cancelAnimationFrame(confettiRAF);
+    confettiRAF = requestAnimationFrame(step);
+  }
+  window.addEventListener('resize', function(){ if(!canvas.hidden) resizeCanvas(); });
+
+  loadBest();
+  build();
+})();
+</script>
